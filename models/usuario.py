@@ -151,6 +151,45 @@ def actualizar_password(id_usuario, password_nueva):
     return actualizados == 1
 
 
+def tiene_codigo_recuperacion(id_usuario):
+    """True si el usuario ya tiene un codigo de recuperacion vigente."""
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        "SELECT codigo_recuperacion_hash FROM usuarios WHERE id_usuario = ?;",
+        (id_usuario,)
+    )
+    fila = cursor.fetchone()
+    conexion.close()
+
+    return fila is not None and bool(fila["codigo_recuperacion_hash"])
+
+
+def obtener_hash_codigo_recuperacion(id_usuario):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        "SELECT codigo_recuperacion_hash FROM usuarios WHERE id_usuario = ?;",
+        (id_usuario,)
+    )
+    fila = cursor.fetchone()
+    conexion.close()
+
+    return fila["codigo_recuperacion_hash"] if fila else None
+
+
+def guardar_codigo_recuperacion(id_usuario, codigo_normalizado):
+    """Guarda el hash del codigo de recuperacion (reemplaza el anterior)."""
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        "UPDATE usuarios SET codigo_recuperacion_hash = ? WHERE id_usuario = ?;",
+        (generar_hash(codigo_normalizado), id_usuario)
+    )
+    conexion.commit()
+    conexion.close()
+
+
 def crear_usuarios_por_defecto():
     """
     Garantiza que existan las dos cuentas del sistema:

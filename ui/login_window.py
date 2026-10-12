@@ -4,6 +4,9 @@ Ventana de inicio de sesion.
 Usa controlador_login.iniciar_sesion(usuario, password), igual que
 la version anterior; si es correcto, el controlador guarda la sesion
 en helpers/sesion.py y esta ventana se cierra con accept().
+
+Si el usuario aun no tiene codigo de recuperacion, se le muestra uno
+antes de entrar. "¿Olvidaste tu contraseña?" abre la recuperacion.
 """
 
 from PySide6.QtCore import Qt
@@ -11,6 +14,7 @@ from PySide6.QtWidgets import QDialog, QFrame, QLabel, QLineEdit, QVBoxLayout
 
 from controllers import controlador_login
 from ui import theme
+from ui.dialogs.recuperacion_dialog import CodigoRecuperacionDialog, RecuperarPasswordDialog
 from ui.icons import icon, logo_pixmap
 from ui.widgets.common import button, label
 from ui.widgets.forms import FormField
@@ -80,6 +84,11 @@ class LoginWindow(QDialog):
         self.boton_entrar.setDefault(False)
         caja.addWidget(self.boton_entrar)
 
+        self.boton_olvido = button("¿Olvidaste tu contraseña?", "key", variant="ghost",
+                                   on_click=self._recuperar_password)
+        self.boton_olvido.setAutoDefault(False)
+        caja.addWidget(self.boton_olvido, 0, Qt.AlignHCenter)
+
         fondo.addWidget(tarjeta, 0, Qt.AlignHCenter)
         fondo.addStretch(1)
 
@@ -101,6 +110,13 @@ class LoginWindow(QDialog):
             self.entrada_usuario.text(), self.entrada_password.text()
         )
         if exito:
+            codigo = controlador_login.asegurar_codigo_recuperacion()
+            if codigo:
+                CodigoRecuperacionDialog(
+                    self, codigo,
+                    "Guarda este código: si algún día olvidas tu contraseña, "
+                    "lo necesitarás para crear una nueva.",
+                ).exec()
             self.accept()
             return
 
@@ -113,3 +129,17 @@ class LoginWindow(QDialog):
         else:
             self.campo_password.set_invalid(True)
             self.entrada_password.setFocus()
+
+    def _recuperar_password(self):
+        self.error.hide()
+        dialogo = RecuperarPasswordDialog(self, self.entrada_usuario.text())
+        if not dialogo.exec():
+            return
+        CodigoRecuperacionDialog(
+            self, dialogo.codigo_nuevo,
+            f"{dialogo.mensaje_exito} Tu código anterior ya no sirve; guarda este nuevo.",
+        ).exec()
+        self.entrada_usuario.setText(dialogo.campo_usuario.control.text().strip())
+        self.entrada_password.clear()
+        self.campo_password.set_invalid(False)
+        self.entrada_password.setFocus()

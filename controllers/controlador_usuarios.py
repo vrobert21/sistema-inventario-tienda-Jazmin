@@ -1,6 +1,6 @@
 from helpers import permisos, sesion
 from helpers.seguridad import verificar_password
-from models import usuario
+from models import acceso, usuario
 
 
 def listar_cuentas_editables():
@@ -53,6 +53,8 @@ def cambiar_password(id_usuario, password_admin, password_nueva, confirmacion):
         return False, "La nueva contraseña debe ser distinta de la actual.", "nueva"
 
     usuario.actualizar_password(id_usuario, password_nueva)
+    acceso.registrar_evento(destino["usuario"], "cambio_password", destino["id_usuario"],
+                            f"Cambiada por {actual['usuario']}")
 
     if destino["id_usuario"] == actual["id_usuario"]:
         return True, "Tu contraseña se actualizó.", None

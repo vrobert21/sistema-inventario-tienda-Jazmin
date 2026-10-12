@@ -208,3 +208,34 @@ CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha);
 CREATE INDEX IF NOT EXISTS idx_detalle_ventas_venta ON detalle_ventas(id_venta);
 CREATE INDEX IF NOT EXISTS idx_movimientos_cuenta_cliente ON movimientos_cuenta_cliente(id_cliente);
 CREATE INDEX IF NOT EXISTS idx_movimientos_inventario_producto ON movimientos_inventario(id_producto);
+
+-- ------------------------------------------------------------
+-- HISTORIAL_ACCESOS
+-- Registro de inicios de sesion (exitosos y fallidos), cierres,
+-- bloqueos y recuperaciones de contrasena. Lo consulta el
+-- administrador en la seccion "Seguridad".
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS historial_accesos (
+    id_acceso       INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha           TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    usuario         TEXT NOT NULL,          -- login tal como se escribio
+    id_usuario      INTEGER,                -- NULL si el usuario no existe
+    evento          TEXT NOT NULL,          -- inicio, fallido, bloqueo, cierre, recuperacion...
+    detalle         TEXT,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
+);
+
+CREATE INDEX IF NOT EXISTS idx_historial_accesos_fecha ON historial_accesos(fecha);
+
+-- ------------------------------------------------------------
+-- INTENTOS_LOGIN
+-- Intentos fallidos seguidos por nombre de usuario, para el
+-- bloqueo temporal contra fuerza bruta. Se lleva por el texto
+-- escrito (en minusculas), exista o no la cuenta, para no
+-- revelar que usuarios existen.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS intentos_login (
+    usuario         TEXT PRIMARY KEY,
+    intentos        INTEGER NOT NULL DEFAULT 0,
+    bloqueado_hasta TEXT                    -- 'YYYY-MM-DD HH:MM:SS' local, NULL = sin bloqueo
+);

@@ -68,6 +68,15 @@ def _aplicar_migraciones(conexion):
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pagos_fecha ON pagos(fecha);")
     conexion.commit()
 
+    # --- Recuperacion de contrasena: cada usuario guarda el hash de su
+    # codigo de recuperacion (nunca el codigo en texto plano).
+    cursor.execute("PRAGMA table_info(usuarios);")
+    columnas_usuarios = {fila["name"] for fila in cursor.fetchall()}
+
+    if "codigo_recuperacion_hash" not in columnas_usuarios:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN codigo_recuperacion_hash TEXT;")
+        conexion.commit()
+
 
 if __name__ == "__main__":
     inicializar_base_datos()

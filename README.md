@@ -14,6 +14,7 @@ Aplicación de escritorio para administrar el inventario, las ventas, los crédi
 | **Productos** | Alta, edición y activación/desactivación de productos con precios, existencia y stock mínimo |
 | **Categorías** | Gestión de categorías de productos |
 | **Clientes** | Registro de clientes con límite de crédito opcional |
+| **Seguridad** | (solo administrador) Cambiar contraseñas, generar código de recuperación, historial de accesos y respaldos de la base de datos |
 
 Además:
 
@@ -21,11 +22,15 @@ Además:
 
   | Cuenta | Rol | Secciones |
   |---|---|---|
-  | Administrador | `admin` | Inicio, Reportes, Inventario, Productos y Categorías (parte logística) |
+  | Administrador | `admin` | Inicio, Reportes, Inventario, Productos, Categorías (parte logística) y Seguridad |
   | Ventas | `vendedor` | Ventas, Créditos y Clientes |
 
   Cada cuenta solo ve en el menú las secciones de su rol (ver `helpers/permisos.py`).
-- El administrador puede cambiar su contraseña y la de la cuenta de ventas desde el botón **Cambiar contraseña** de la barra superior (pide la contraseña actual del administrador).
+- El administrador puede cambiar su contraseña y la de la cuenta de ventas desde **Seguridad → Cambiar contraseña** (pide la contraseña actual del administrador). Cada cambio queda en el historial de accesos.
+- **Recuperación de contraseña sin internet**: al iniciar sesión por primera vez cada usuario recibe un *código de recuperación* (se muestra una sola vez y en la base solo se guarda su hash). Si olvida la contraseña, en **¿Olvidaste tu contraseña?** escribe su usuario, el código y la nueva contraseña. El código es de un solo uso: al usarlo se entrega uno nuevo. Con la sesión iniciada se puede generar otro: el administrador desde **Seguridad → Nuevo código** y la cuenta de ventas desde el botón **Recuperación** de la barra superior.
+- **Bloqueo temporal contra fuerza bruta**: tras 5 intentos fallidos seguidos (de inicio de sesión o de recuperación) el usuario queda bloqueado 5 minutos (`MAX_INTENTOS` y `MINUTOS_BLOQUEO` en `controllers/controlador_login.py`).
+- **Historial de accesos**: se registran inicios y cierres de sesión, intentos fallidos, bloqueos y recuperaciones de contraseña (sección **Seguridad**).
+- **Respaldos automáticos cada 2 días** en la carpeta `respaldos/` junto a `tienda_jazmin.db` (o junto al `.exe`). Se revisa al abrir el programa y cada hora mientras está abierto; se conservan los 15 más recientes. También se puede crear uno al momento desde **Seguridad**. Para restaurar, cerrar el programa y copiar el respaldo sobre `tienda_jazmin.db`.
 - Búsqueda en todas las tablas sin importar mayúsculas ni tildes.
 - Las consultas pesadas y la generación de PDF se ejecutan en segundo plano para no congelar la interfaz.
 
@@ -67,7 +72,7 @@ Al abrir el sistema por primera vez:
    | `admin` | `admin123` |
    | `ventas` | `ventas123` |
 
-   **Cambia ambas contraseñas (sesión de administrador → Cambiar contraseña) antes de usar el sistema en producción.**
+   **Cambia ambas contraseñas (sesión de administrador → Seguridad → Cambiar contraseña) antes de usar el sistema en producción.**
 
 ### Acceso directo en el escritorio (Windows)
 
@@ -116,7 +121,7 @@ La aplicación sigue una separación en capas: **ui → controllers → models �
 ## Base de datos
 
 - Motor: SQLite 3, archivo `database/tienda_jazmin.db`.
-- Tablas principales: `usuarios`, `categorias`, `productos`, `clientes`, `proveedores`, `ventas`, `detalle_ventas`, `compras`, `detalle_compras`, `pagos`, `movimientos_cuenta_cliente` y `movimientos_inventario`.
+- Tablas principales: `usuarios`, `categorias`, `productos`, `clientes`, `proveedores`, `ventas`, `detalle_ventas`, `compras`, `detalle_compras`, `pagos`, `movimientos_cuenta_cliente`, `movimientos_inventario`, `historial_accesos` e `intentos_login`.
 - **Todos los montos se guardan como enteros en centavos** (por ejemplo, $17.50 se guarda como `1750`) para evitar errores de redondeo.
 - Las migraciones se aplican automáticamente al iniciar (`database/conexion.py`).
 - El saldo, lo pagado y el estado de cada crédito no se guardan: se calculan siempre a partir de los pagos registrados.
@@ -130,3 +135,5 @@ python -m database.conexion
 ## Documentación adicional
 
 [CAMBIOS_INTERFAZ.md](CAMBIOS_INTERFAZ.md) describe con más detalle la migración de Tkinter a PySide6, el módulo de reportes (de dónde sale cada dato) y el funcionamiento de los créditos.
+
+[GUIA_SEGURIDAD.md](GUIA_SEGURIDAD.md) explica la recuperación de contraseña, el bloqueo por intentos fallidos, el historial de accesos y los respaldos automáticos (interfaz y código).

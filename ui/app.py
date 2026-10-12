@@ -9,7 +9,7 @@ import os
 import sys
 import traceback
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtWidgets import QApplication, QDialog
 
@@ -50,6 +50,26 @@ def _identificar_en_windows():
             pass
 
 
+def _programar_respaldos(app):
+    """
+    El respaldo automatico se revisa al arrancar (main.py); este
+    temporizador lo vuelve a revisar cada hora por si el programa
+    se queda abierto varios dias seguidos.
+    """
+    from database.respaldo import respaldo_automatico_si_toca
+
+    def revisar():
+        try:
+            respaldo_automatico_si_toca()
+        except Exception:
+            traceback.print_exc()
+
+    temporizador = QTimer(app)
+    temporizador.setInterval(60 * 60 * 1000)
+    temporizador.timeout.connect(revisar)
+    temporizador.start()
+
+
 def run():
     _identificar_en_windows()
     # Escalado nitido en pantallas con 125% / 150% (comun en portatiles con Windows).
@@ -58,12 +78,14 @@ def run():
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("Tienda Jazmín")
     app.setQuitOnLastWindowClosed(False)
+    app.styleHints().setColorScheme(Qt.ColorScheme.Light) #linea de cambio de tema.
     aplicar_tema(app)
     if os.path.exists(_RUTA_ICONO):
         app.setWindowIcon(QIcon(_RUTA_ICONO))
     else:
         app.setWindowIcon(logo_pixmap(64))
     _instalar_manejador_errores(app)
+    _programar_respaldos(app)
 
     from ui.login_window import LoginWindow
     from ui.main_window import MainWindow

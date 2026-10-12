@@ -41,6 +41,24 @@ def verificar_password(password, hash_guardado):
     return hmac.compare_digest(hash_calculado, hash_esperado)
 
 
+# Sin 0/O, 1/I/L para que el codigo se pueda copiar a mano sin confusiones.
+_ALFABETO_CODIGO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
+def generar_codigo_recuperacion():
+    """
+    Codigo aleatorio de 12 caracteres en grupos de 4 (ej. 'K7QM-3XRA-9TPW').
+    Solo se muestra una vez al usuario; en la base se guarda su hash.
+    """
+    caracteres = "".join(secrets.choice(_ALFABETO_CODIGO) for _ in range(12))
+    return "-".join(caracteres[i:i + 4] for i in range(0, 12, 4))
+
+
+def normalizar_codigo(codigo):
+    """'k7qm 3xra-9tpw' -> 'K7QM3XRA9TPW' (se hashea y compara sin guiones ni espacios)."""
+    return "".join(c for c in (codigo or "").upper() if c.isalnum())
+
+
 if __name__ == "__main__":
 
     prueba_hash = generar_hash("MiClaveSegura123")

@@ -1,4 +1,10 @@
-"""Barra superior: marca, fecha, usuario, cambiar contrasena (admin) y cerrar sesion."""
+"""
+Barra superior: marca, fecha, usuario, codigo de recuperacion y cerrar sesion.
+
+El administrador cambia contrasenas y genera su codigo desde la seccion
+Seguridad; la cuenta de ventas no tiene esa seccion, asi que conserva
+aqui el boton "Recuperacion".
+"""
 
 from datetime import date
 
@@ -22,7 +28,7 @@ def fecha_larga(d=None):
 
 class TopBar(QFrame):
     logout_requested = Signal()
-    change_password_requested = Signal()
+    recovery_code_requested = Signal()
 
     def __init__(self, usuario, parent=None):
         super().__init__(parent)
@@ -66,9 +72,10 @@ class TopBar(QFrame):
         fila.addLayout(textos)
         fila.addSpacing(10)
 
-        if rol == "admin":
-            fila.addWidget(button("Cambiar contraseña", "lock", variant="ghost",
-                                  on_click=lambda: self.change_password_requested.emit()))
+        if rol != "admin":
+            fila.addWidget(button("Recuperación", "key", variant="ghost",
+                                  tooltip="Generar un nuevo código de recuperación de contraseña",
+                                  on_click=lambda: self.recovery_code_requested.emit()))
 
         salir = button("Cerrar sesión", "logout", variant="ghost",
                        on_click=lambda: self.logout_requested.emit())

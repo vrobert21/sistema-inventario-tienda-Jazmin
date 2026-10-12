@@ -18,8 +18,10 @@ from PySide6.QtCore import Signal
 from PySide6.QtGui import QGuiApplication, QKeySequence, QShortcut
 from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
+from controllers import controlador_login
 from helpers import permisos, sesion
 from ui.dialogs.password_dialog import PasswordDialog
+from ui.dialogs.recuperacion_dialog import CodigoRecuperacionDialog, NuevoCodigoDialog
 from ui.pages.categorias import CategoriasPage
 from ui.pages.clientes import ClientesPage
 from ui.pages.creditos import CreditosPage
@@ -27,6 +29,7 @@ from ui.pages.dashboard import DashboardPage
 from ui.pages.inventario import InventarioPage
 from ui.pages.productos import ProductosPage
 from ui.pages.reportes import ReportesPage
+from ui.pages.seguridad import SeguridadPage
 from ui.pages.ventas import VentasPage
 from ui.widgets import messages
 from ui.widgets.messages import Toast
@@ -43,6 +46,7 @@ SECCIONES = [
     [("inventario", "Inventario", "swap", InventarioPage),
      ("productos", "Productos", "box", ProductosPage),
      ("categorias", "Categorías", "tag", CategoriasPage)],
+    [("seguridad", "Seguridad", "shield", SeguridadPage)],
 ]
 
 
@@ -64,7 +68,7 @@ class MainWindow(QMainWindow):
 
         self.topbar = TopBar(sesion.obtener_usuario_actual())
         self.topbar.logout_requested.connect(self._cerrar_sesion)
-        self.topbar.change_password_requested.connect(self._cambiar_password)
+        self.topbar.recovery_code_requested.connect(self.nuevo_codigo_recuperacion)
         vertical.addWidget(self.topbar)
 
         cuerpo = QHBoxLayout()
@@ -144,22 +148,44 @@ class MainWindow(QMainWindow):
 
     # --- Sesion / ventana ---
 
-    def _cambiar_password(self):
+    # Las usa la seccion Seguridad (admin) y el boton "Recuperacion" de la
+    # barra superior (ventas). Devuelven True si se completo la accion.
+
+    def cambiar_password(self):
         if not permisos.es_admin():
-            return
+            return False
         dialogo = PasswordDialog(self)
         if dialogo.exec():
             self.show_toast(dialogo.mensaje_exito)
+            return True
+        return False
+
+    def nuevo_codigo_recuperacion(self):
+        dialogo = NuevoCodigoDialog(self)
+        if dialogo.exec():
+            CodigoRecuperacionDialog(
+                self, dialogo.codigo,
+                "Tu código anterior ya no sirve. Guarda este nuevo en un lugar seguro.",
+            ).exec()
+            self.show_toast("Se generó un nuevo código de recuperación.")
+            return True
+        return False
 
     def _cerrar_sesion(self):
         if messages.confirm(self, "¿Cerrar sesión?",
                             "Volverás a la pantalla de inicio de sesión.",
                             confirmar="Cerrar sesión"):
-            sesion.cerrar_sesion()
             self.logout_requested = True
             self.close()
 
     def closeEvent(self, evento):
+        # Cubre "Cerrar sesión" y cerrar con la X: ambos quedan en el historial.
+        if sesion.hay_sesion_activa():
+            try:
+                controlador_login.cerrar_sesion()
+            except Exception:
+                traceback.print_exc()
+                sesion.cerrar_sesion()
         super().closeEvent(evento)
         self.closed.emit()
 
