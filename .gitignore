@@ -12,7 +12,6 @@ ui/widgets/__pycache__
 
 # Ignora archivos de configuracion de entorno virtual
 .venv
-.venv-1
 
 # Ignorar archivos de compilacion y distribucion
 build
