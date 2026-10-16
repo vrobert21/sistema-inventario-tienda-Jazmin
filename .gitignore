@@ -16,6 +16,7 @@ ui/widgets/__pycache__
 # Ignorar archivos de compilacion y distribucion
 build
 dist
+
 # Respaldos automaticos de la base de datos
-database/respaldos/
-respaldos/
+database/tienda_jazmin.db
+database/respaldos

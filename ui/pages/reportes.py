@@ -66,6 +66,9 @@ class ReportesPage(Page):
         self.boton_actualizar = self.add_action(
             button("Actualizar", "refresh", "secondary", on_click=self._consultar_ahora,
                    tooltip="Volver a leer los datos del período (F5)"))
+        self.boton_existencias = self.add_action(
+            button("PDF de existencias", "box", "secondary", on_click=self._generar_pdf_existencias,
+                   tooltip="Guardar en PDF los artículos que hay en stock ahora"))
         self.boton_pdf = self.add_action(
             button("Generar PDF", "file", "primary", large=True, on_click=self._generar_pdf))
         self.boton_pdf.setEnabled(False)
@@ -427,6 +430,8 @@ class ReportesPage(Page):
             self._al_recibir_reporte(dato, resultado)
         elif tipo == "pdf":
             self._al_terminar_pdf(dato, resultado)
+        elif tipo == "existencias":
+            self._al_terminar_pdf_existencias(dato, resultado)
 
     def _al_recibir_reporte(self, numero, resultado):
         if numero != self._consulta_n:
@@ -550,9 +555,31 @@ class ReportesPage(Page):
         self.boton_pdf.setText("Generando PDF...")
         self._lanzar(Tarea(("pdf", ruta), controlador_reportes.exportar_pdf, self._reporte, ruta, parent=self))
 
+    def _generar_pdf_existencias(self):
+        carpeta = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation) or os.path.expanduser("~")
+        nombre = f"existencias_{date.today():%Y-%m-%d}.pdf"
+        ruta, _ = QFileDialog.getSaveFileName(
+            self, "Guardar reporte de existencias", os.path.join(carpeta, nombre), "Documento PDF (*.pdf)")
+        if not ruta:
+            return
+        if not ruta.lower().endswith(".pdf"):
+            ruta += ".pdf"
+
+        self.boton_existencias.setEnabled(False)
+        self.boton_existencias.setText("Generando PDF...")
+        self._lanzar(Tarea(("existencias", ruta), controlador_reportes.exportar_pdf_existencias, ruta, parent=self))
+
+    def _al_terminar_pdf_existencias(self, ruta, resultado):
+        self.boton_existencias.setEnabled(True)
+        self.boton_existencias.setText("PDF de existencias")
+        self._avisar_pdf_guardado(ruta, resultado)
+
     def _al_terminar_pdf(self, ruta, resultado):
         self.boton_pdf.setEnabled(True)
         self.boton_pdf.setText("Generar PDF")
+        self._avisar_pdf_guardado(ruta, resultado)
+
+    def _avisar_pdf_guardado(self, ruta, resultado):
         if isinstance(resultado, Exception):
             exito, mensaje = False, "No se pudo generar el PDF."
         else:

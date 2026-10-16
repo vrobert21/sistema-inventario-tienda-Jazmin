@@ -8,10 +8,11 @@ asi lo que se ve y lo que se imprime siempre coinciden.
 """
 
 from datetime import datetime
+import importlib
 import traceback
 
 from helpers import sesion
-from models import credito, estadisticas, movimiento_inventario, reportes as consultas
+from models import credito, estadisticas, movimiento_inventario, producto, reportes as consultas
 from reportes import resumen
 from reportes.formato import ORDEN_PAGO
 from reportes.periodos import crear_periodo
@@ -155,17 +156,74 @@ def generar_reporte(tipo, fecha):
         return False, f"No se pudo consultar la información del período ({error}).", None
 
 
+def construir_reporte_existencias():
+    """
+    Articulos en stock: productos activos con existencia mayor a cero,
+    ordenados por categoria y nombre, con totales generales y por categoria.
+    Los montos estan en centavos, igual que en la base.
+    """
+    activos = [dict(p) for p in producto.listar_productos(solo_activos=True)]
+    en_stock = [p for p in activos if p["existencia"] > 0]
+    en_stock.sort(key=lambda p: (p["nombre_categoria"].lower(), p["nombre"].lower()))
+    for p in en_stock:
+        p["stock_bajo"] = p["existencia"] <= p["stock_minimo"]
+
+    por_categoria = {}
+    for p in en_stock:
+        c = por_categoria.setdefault(p["nombre_categoria"], {
+            "categoria": p["nombre_categoria"], "productos": 0, "unidades": 0,
+            "valor_costo": 0, "valor_venta": 0,
+        })
+        c["productos"] += 1
+        c["unidades"] += p["existencia"]
+        c["valor_costo"] += p["precio_compra"] * p["existencia"]
+        c["valor_venta"] += p["precio_venta"] * p["existencia"]
+
+    usuario = sesion.obtener_usuario_actual() or {}
+    return {
+        "generado": datetime.now(),
+        "generado_por": usuario.get("nombre", ""),
+        "productos": en_stock,
+        "por_categoria": list(por_categoria.values()),
+        "indicadores": {
+            "productos_activos": len(activos),
+            "productos": len(en_stock),
+            "sin_existencia": len(activos) - len(en_stock),
+            "categorias": len(por_categoria),
+            "unidades": sum(p["existencia"] for p in en_stock),
+            "valor_costo": sum(c["valor_costo"] for c in por_categoria.values()),
+            "valor_venta": sum(c["valor_venta"] for c in por_categoria.values()),
+        },
+    }
+
+
 def exportar_pdf(reporte, ruta):
     """Genera el PDF del reporte ya consultado. Devuelve (exito, mensaje)."""
+    return _guardar_pdf("reportes.pdf", "generar_pdf", reporte, ruta)
+
+
+def exportar_pdf_existencias(ruta):
+    """Consulta los articulos en stock y genera su PDF. Devuelve (exito, mensaje)."""
     try:
-        from reportes.pdf import generar_pdf
+        reporte = construir_reporte_existencias()
+    except Exception as error:
+        traceback.print_exc()
+        return False, f"No se pudo consultar el inventario ({error})."
+    return _guardar_pdf("reportes.pdf_existencias", "generar_pdf_existencias", reporte, ruta)
+
+
+def _guardar_pdf(modulo, funcion, reporte, ruta):
+    """Llama a <modulo>.<funcion>(reporte, ruta) con los mensajes de error comunes."""
+    try:
+        # Se importa aqui para avisar con un mensaje claro si falta ReportLab.
+        generar = getattr(importlib.import_module(modulo), funcion)
     except ModuleNotFoundError as error:
         if not (error.name or "").startswith("reportlab"):
             raise
         return False, ("Falta la biblioteca ReportLab para crear PDF. "
                        "Instálala con:  uv pip install --python .venv reportlab")
     try:
-        generar_pdf(reporte, ruta)
+        generar(reporte, ruta)
         return True, f"Reporte guardado en {ruta}"
     except PermissionError:
         return False, ("No se pudo guardar el archivo. Si ese PDF está abierto en otro "
