@@ -20,7 +20,7 @@ Además:
 
 - Inicio de sesión con contraseñas cifradas (PBKDF2-SHA256) y dos cuentas con funciones separadas:
 
-  | Cuenta | Rol | Secciones |
+  | Cuenta | Rol | Secciones. |
   |---|---|---|
   | Administrador | `admin` | Todas las secciones: Inicio, Reportes, Ventas, Créditos, Clientes, Inventario, Productos, Categorías y Seguridad |
   | Ventas | `vendedor` | Reportes, Ventas, Créditos y Clientes |
