@@ -6,8 +6,8 @@ ventanas nuevas. Cada vez que se entra a una seccion se llama a su
 refresh(), asi los datos siempre estan actualizados.
 
 Solo se construyen las secciones que permite el rol del usuario
-(ver helpers/permisos.py): el administrador ve todas las secciones y
-el usuario de ventas ve reportes, ventas, creditos y clientes.
+(ver helpers/permisos.py): el administrador ve la parte logistica y
+el usuario de ventas ve ventas, creditos y clientes.
 
 Atajos: Ctrl+1 ... Ctrl+N para cambiar de seccion, F5 para recargar.
 """
@@ -104,10 +104,7 @@ class MainWindow(QMainWindow):
 
         self.toast = Toast(raiz)
         self._clave_actual = None
-        inicial = permisos.seccion_inicial()
-        if inicial in self.pages:
-            self.navigate(inicial)
-        elif secciones:
+        if secciones:
             self.navigate(secciones[0][0][0])
         self._ajustar_tamano()
 
