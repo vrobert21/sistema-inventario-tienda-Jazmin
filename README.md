@@ -136,4 +136,4 @@ python -m database.conexion
 
 [CAMBIOS_INTERFAZ.md](CAMBIOS_INTERFAZ.md) describe con más detalle la migración de Tkinter a PySide6, el módulo de reportes (de dónde sale cada dato) y el funcionamiento de los créditos.
 
-[GUIA_SEGURIDAD.md](GUIA_SEGURIDAD.md) explica la recuperación de contraseña, el bloqueo por intentos fallidos, el historial de accesos y los respaldos automáticos (interfaz y código).
+[GUIA_SEGURIDAD.md](GUIA_SEGURIDAD.md) explica la recuperación de contraseña, el bloqueo por intentos fallidos, el historial de accesos y los respaldos automáticos (interfaz y código). 

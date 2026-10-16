@@ -1,12 +1,4 @@
-"""
-Punto de entrada de Tienda Jazmin.
 
-La interfaz ahora usa PySide6 (carpeta ui/). La logica, los modelos,
-los controladores y la base de datos no cambiaron.
-
-    pip install -r requirements.txt
-    python main.py
-"""
 
 import sys
 
