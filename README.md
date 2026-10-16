@@ -22,8 +22,8 @@ Además:
 
   | Cuenta | Rol | Secciones |
   |---|---|---|
-  | Administrador | `admin` | Inicio, Reportes, Inventario, Productos, Categorías (parte logística) y Seguridad |
-  | Ventas | `vendedor` | Ventas, Créditos y Clientes |
+  | Administrador | `admin` | Todas las secciones: Inicio, Reportes, Ventas, Créditos, Clientes, Inventario, Productos, Categorías y Seguridad |
+  | Ventas | `vendedor` | Reportes, Ventas, Créditos y Clientes |
 
   Cada cuenta solo ve en el menú las secciones de su rol (ver `helpers/permisos.py`).
 - El administrador puede cambiar su contraseña y la de la cuenta de ventas desde **Seguridad → Cambiar contraseña** (pide la contraseña actual del administrador). Cada cambio queda en el historial de accesos.
