@@ -57,7 +57,7 @@ Antes de escribir código, se revisó cómo estaba hecho el proyecto. Así lo nu
 
 3. **Los formularios tienen una base común.** `ui/widgets/form_dialog.py` (`FormDialog`) ya da el encabezado, los campos, el mensaje de error en rojo y los botones Cancelar/Guardar. Las ventanas nuevas se hicieron heredando de ella, para que se vean igual que el resto del sistema.
 
-4. **Hay dos roles.** `admin` (parte logística) y `vendedor` (ventas), definidos en `helpers/permisos.py`.
+4. **Hay dos roles.** `admin` (todas las secciones) y `vendedor` (ventas, créditos, clientes y reportes), definidos en `helpers/permisos.py`.
 
 **Decisión importante:** como el sistema es **100 % local** (sin internet), no se puede recuperar la contraseña por correo. Por eso se eligieron los **códigos de recuperación**, como los "códigos de respaldo" de Google o Microsoft.
 
