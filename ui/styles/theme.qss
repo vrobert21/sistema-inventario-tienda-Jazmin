@@ -386,6 +386,26 @@ QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
     height: 12px;
 }
 
+/* Campos sin flechas (p. ej. dinero). Los botones quedan como un margen
+   vacio a la derecha; no usar NoButtons (ver ui/widgets/forms.py). */
+QSpinBox[sinFlechas="true"]::up-button, QDoubleSpinBox[sinFlechas="true"]::up-button,
+QSpinBox[sinFlechas="true"]::down-button, QDoubleSpinBox[sinFlechas="true"]::down-button {
+    width: 12px;
+    margin: 0px;
+}
+
+QSpinBox[sinFlechas="true"]::up-button:hover, QDoubleSpinBox[sinFlechas="true"]::up-button:hover,
+QSpinBox[sinFlechas="true"]::down-button:hover, QDoubleSpinBox[sinFlechas="true"]::down-button:hover {
+    background: transparent;
+}
+
+QSpinBox[sinFlechas="true"]::up-arrow, QDoubleSpinBox[sinFlechas="true"]::up-arrow,
+QSpinBox[sinFlechas="true"]::down-arrow, QDoubleSpinBox[sinFlechas="true"]::down-arrow {
+    image: none;
+    width: 0px;
+    height: 0px;
+}
+
 /* ---------- Casillas ---------- */
 
 QCheckBox, QRadioButton {

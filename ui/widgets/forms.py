@@ -67,7 +67,10 @@ def money_input(maximo=9_999_999.99):
     campo.setDecimals(2)
     campo.setRange(0, maximo)
     campo.setPrefix("$ ")
-    campo.setButtonSymbols(QDoubleSpinBox.NoButtons)
+    # Las flechas se ocultan desde el tema: con setButtonSymbols(NoButtons)
+    # y la hoja de estilos, Qt deja el texto con 1 px de ancho (no se ve).
+    campo.setProperty("sinFlechas", True)
+    campo.lineEdit().setTextMargins(12, 0, 0, 0)  # el padding del tema no aplica aqui
     campo.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
     campo.setAccelerated(True)
     return campo
@@ -91,7 +94,8 @@ def int_input(minimo=0, maximo=1_000_000, con_flechas=True):
     campo.setAccelerated(True)
     campo.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
     if not con_flechas:
-        campo.setButtonSymbols(QSpinBox.NoButtons)
+        campo.setProperty("sinFlechas", True)  # ver money_input
+        campo.lineEdit().setTextMargins(12, 0, 0, 0)
     return campo
 
 
