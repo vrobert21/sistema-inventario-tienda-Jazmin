@@ -4,6 +4,10 @@ Inicio de sesion, cierre de sesion y recuperacion de contrasena.
 Proteccion contra fuerza bruta: tras MAX_INTENTOS intentos fallidos
 seguidos (de inicio de sesion o de recuperacion) el usuario queda
 bloqueado MINUTOS_BLOQUEO minutos. Todo queda en historial_accesos.
+
+Recuperacion con codigo: solo la cuenta de administrador
+(ROLES_CON_RECUPERACION). Las cuentas de ventas no tienen codigo; si
+olvidan su contrasena, el administrador la cambia desde Seguridad.
 """
 
 from helpers import sesion
@@ -14,6 +18,10 @@ from models import acceso, usuario
 
 MAX_INTENTOS = 5
 MINUTOS_BLOQUEO = 5
+ROLES_CON_RECUPERACION = ("admin",)
+
+_ERROR_RECUPERACION = ("Usuario o código de recuperación incorrectos. Si tu cuenta es de "
+                       "ventas, pide al administrador que cambie tu contraseña.")
 
 
 def _texto_espera(segundos):
@@ -99,6 +107,10 @@ def cerrar_sesion():
 # Codigo de recuperacion
 # ------------------------------------------------------------
 
+def _puede_recuperar(rol):
+    return rol in ROLES_CON_RECUPERACION
+
+
 def _nuevo_codigo(id_usuario):
     codigo = generar_codigo_recuperacion()
     usuario.guardar_codigo_recuperacion(id_usuario, normalizar_codigo(codigo))
@@ -111,7 +123,9 @@ def asegurar_codigo_recuperacion():
     uno y lo devuelve para mostrarlo una sola vez. Si ya tiene, None.
     """
     actual = sesion.obtener_usuario_actual()
-    if actual is None or usuario.tiene_codigo_recuperacion(actual["id_usuario"]):
+    if actual is None or not _puede_recuperar(actual["rol"]):
+        return None
+    if usuario.tiene_codigo_recuperacion(actual["id_usuario"]):
         return None
     codigo = _nuevo_codigo(actual["id_usuario"])
     acceso.registrar_evento(actual["usuario"], "codigo_generado", actual["id_usuario"],
@@ -129,6 +143,8 @@ def regenerar_codigo_recuperacion(password):
     actual = sesion.obtener_usuario_actual()
     if actual is None:
         return False, "No hay una sesión activa.", None
+    if not _puede_recuperar(actual["rol"]):
+        return False, "Solo el administrador tiene código de recuperación.", None
 
     fila = usuario.obtener_usuario_por_id(actual["id_usuario"])
     if fila is None or not verificar_password(password or "", fila["password_hash"]):
@@ -166,13 +182,17 @@ def recuperar_password(nombre_usuario, codigo, password_nueva, confirmacion):
                                 "Recuperación durante el bloqueo")
         return False, _mensaje_bloqueo(segundos), None, None
 
+    # Las cuentas de ventas se tratan igual que un codigo incorrecto (mismo
+    # mensaje), para no revelar que tipo de cuenta es cada usuario.
     fila = usuario.obtener_usuario_por_login(nombre_usuario)
-    hash_codigo = usuario.obtener_hash_codigo_recuperacion(fila["id_usuario"]) if fila else None
+    hash_codigo = None
+    if fila is not None and _puede_recuperar(fila["rol"]):
+        hash_codigo = usuario.obtener_hash_codigo_recuperacion(fila["id_usuario"])
 
     if not hash_codigo or not verificar_password(normalizar_codigo(codigo), hash_codigo):
         id_usuario = fila["id_usuario"] if fila else None
         mensaje = _registrar_fallo(nombre_usuario, id_usuario, "recuperacion_fallida",
-                                   "Usuario o código de recuperación incorrectos.")
+                                   _ERROR_RECUPERACION)
         return False, mensaje, "codigo", None
 
     usuario.actualizar_password(fila["id_usuario"], password_nueva)

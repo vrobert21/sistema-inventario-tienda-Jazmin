@@ -77,6 +77,14 @@ def _aplicar_migraciones(conexion):
         cursor.execute("ALTER TABLE usuarios ADD COLUMN codigo_recuperacion_hash TEXT;")
         conexion.commit()
 
+    # Solo el administrador usa codigo de recuperacion: se invalidan los
+    # que pudieran tener las cuentas de ventas de versiones anteriores.
+    cursor.execute(
+        "UPDATE usuarios SET codigo_recuperacion_hash = NULL "
+        "WHERE rol <> 'admin' AND codigo_recuperacion_hash IS NOT NULL;"
+    )
+    conexion.commit()
+
 
 if __name__ == "__main__":
     inicializar_base_datos()

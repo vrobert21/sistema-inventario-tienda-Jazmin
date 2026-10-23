@@ -93,9 +93,9 @@ class RecuperarPasswordDialog(FormDialog):
         entrada_codigo = text_input("Ej. K7QM-3XRA-9TPW", 20)
         self.campo_codigo = self.add_field(
             FormField("Código de recuperación", entrada_codigo, requerido=True,
-                      ayuda="El código que se te mostró al iniciar sesión por primera vez. "
-                            "Si eres de ventas y no lo tienes, pide al administrador "
-                            "que cambie tu contraseña."),
+                      ayuda="Solo para la cuenta de administrador: es el código que se te "
+                            "mostró al iniciar sesión por primera vez. Si tu cuenta es de "
+                            "ventas, pide al administrador que cambie tu contraseña."),
             1, 0, 2)
         self.campo_nueva = self.add_field(
             FormField("Nueva contraseña", _password_input("Mínimo 6 caracteres"),

@@ -68,7 +68,6 @@ class MainWindow(QMainWindow):
 
         self.topbar = TopBar(sesion.obtener_usuario_actual())
         self.topbar.logout_requested.connect(self._cerrar_sesion)
-        self.topbar.recovery_code_requested.connect(self.nuevo_codigo_recuperacion)
         vertical.addWidget(self.topbar)
 
         cuerpo = QHBoxLayout()
@@ -151,8 +150,8 @@ class MainWindow(QMainWindow):
 
     # --- Sesion / ventana ---
 
-    # Las usa la seccion Seguridad (admin) y el boton "Recuperacion" de la
-    # barra superior (ventas). Devuelven True si se completo la accion.
+    # Las usa la seccion Seguridad (solo administrador). Devuelven True si
+    # se completo la accion.
 
     def cambiar_password(self):
         if not permisos.es_admin():
@@ -164,6 +163,8 @@ class MainWindow(QMainWindow):
         return False
 
     def nuevo_codigo_recuperacion(self):
+        if not permisos.es_admin():
+            return False
         dialogo = NuevoCodigoDialog(self)
         if dialogo.exec():
             CodigoRecuperacionDialog(

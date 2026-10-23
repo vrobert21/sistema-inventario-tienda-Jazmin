@@ -29,6 +29,7 @@ En cada paso se explica **qué se hizo**, **en qué archivo** y **por qué se hi
 - [Paso 9. Pruebas](#paso-9-pruebas)
 - [Paso 10. Documentación](#paso-10-documentación)
 - [Paso 11. Ajuste: botones dentro de Seguridad](#paso-11-ajuste-botones-dentro-de-seguridad)
+- [Paso 12. Ajuste: solo el administrador recupera con código](#paso-12-ajuste-solo-el-administrador-recupera-con-código)
 - [Resumen para exponer en 2 minutos](#resumen-para-exponer-en-2-minutos)
 - [Preguntas que te pueden hacer](#preguntas-que-te-pueden-hacer)
 - [Glosario](#glosario)
@@ -368,11 +369,47 @@ Después se pidió que **"Cambiar contraseña" y "Recuperación" estuvieran en l
 
 ---
 
+## Paso 12. Ajuste: solo el administrador recupera con código
+
+Después se pidió **quitar la recuperación de contraseña al rol de ventas**, pero que el administrador siempre pudiera cambiar y recuperar las contraseñas.
+
+**Lo que se hizo:**
+
+1. **`controllers/controlador_login.py`:**
+   - Se agregó `ROLES_CON_RECUPERACION = ("admin",)` y la función `_puede_recuperar(rol)`.
+   - `asegurar_codigo_recuperacion()` ya no crea código para ventas: a esa cuenta no se le muestra nada al entrar.
+   - `regenerar_codigo_recuperacion()` rechaza a las cuentas de ventas.
+   - `recuperar_password()` trata a una cuenta de ventas igual que un código incorrecto. Usa el **mismo mensaje** (que sugiere pedir el cambio al administrador) para no revelar qué tipo de cuenta es cada usuario, y cuenta como intento fallido para el bloqueo.
+2. **`database/conexion.py`:** una migración borra los códigos que las cuentas de ventas pudieran tener de la versión anterior, para que ya no sirvan.
+3. **`ui/widgets/topbar.py` y `ui/main_window.py`:** se quitó el botón "Recuperación" de la barra superior de ventas. Ahora la barra solo tiene "Cerrar sesión" para todos, y `nuevo_codigo_recuperacion()` comprueba que la sesión sea de administrador.
+4. **`ui/dialogs/recuperacion_dialog.py`:** el texto de ayuda aclara que el código es solo para el administrador.
+
+**Lo que sigue igual para el administrador:**
+
+- recibe su código al entrar por primera vez;
+- recupera su propia contraseña con "¿Olvidaste tu contraseña?";
+- genera un código nuevo desde **Seguridad → Nuevo código**;
+- cambia su contraseña o **restablece la de ventas** desde **Seguridad → Cambiar contraseña**.
+
+**Pruebas (sobre una copia de la base):**
+
+| Se probó | Resultado |
+|---|---|
+| Ventas tenía un código de la versión anterior | La migración lo borró ✔ |
+| Ventas inicia sesión | No recibe código ✔ |
+| Ventas intenta generar un código | Rechazado ✔ |
+| Ventas intenta recuperar con su código viejo | Rechazado, con el mensaje genérico ✔ |
+| Admin recupera su contraseña con su código | Funciona y recibe un código nuevo ✔ |
+| Admin cambia la contraseña de ventas | Funciona y ventas entra con la nueva ✔ |
+| Barra superior de admin y de ventas | Solo "Cerrar sesión" ✔ |
+
+---
+
 ## Resumen para exponer en 2 minutos
 
 > "El sistema ya guardaba las contraseñas cifradas con PBKDF2-SHA256, que es un hash con sal y miles de iteraciones, así que nunca se guardan en texto.
 >
-> Como el sistema es local y no usa correo, para **recuperar la contraseña** cada usuario recibe un **código de recuperación** la primera vez que entra. Si olvida la contraseña, pone su usuario, el código y la nueva contraseña. El código es de un solo uso y también se guarda cifrado.
+> Como el sistema es local y no usa correo, para **recuperar la contraseña** el administrador recibe un **código de recuperación** la primera vez que entra. Si olvida la contraseña, pone su usuario, el código y la nueva contraseña. Las cuentas de ventas no tienen código: si olvidan su contraseña, el administrador se la cambia. El código es de un solo uso y también se guarda cifrado.
 >
 > Para evitar ataques de **fuerza bruta**, después de **5 intentos fallidos** el usuario se **bloquea 5 minutos**, incluso si después escribe la contraseña correcta. La recuperación también cuenta como intento.
 >
@@ -402,7 +439,7 @@ Para que calcular cada hash sea lento a propósito. Para un usuario normal no se
 Si solo se bloquearan los reales, un atacante podría descubrir qué usuarios existen viendo cuáles se bloquean.
 
 **¿Qué pasa si un usuario pierde su código?**
-- Si es de **ventas**, el administrador le cambia la contraseña desde Seguridad.
+- Las cuentas de **ventas** no tienen código: el administrador les cambia la contraseña desde Seguridad.
 - Si es el **administrador**, puede generar un código nuevo mientras recuerde su contraseña. Por eso es importante guardar el código en un lugar seguro.
 
 **¿Por qué el código es de un solo uso?**

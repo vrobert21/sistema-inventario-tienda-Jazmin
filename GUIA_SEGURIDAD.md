@@ -40,7 +40,7 @@ El proyecto sigue la misma organización de siempre: **modelos** (acceso a la ba
 | `ui/dialogs/recuperacion_dialog.py` | **nuevo** | Ventanas de recuperación y del código |
 | `ui/pages/seguridad.py` | **nuevo** | Pantalla "Seguridad" (solo administrador): contraseñas, respaldos e historial |
 | `ui/main_window.py` | modificado | Agrega la sección Seguridad y registra el cierre de sesión |
-| `ui/widgets/topbar.py` | modificado | Botón "Recuperación" en la barra superior (solo cuenta de ventas) |
+| `ui/widgets/topbar.py` | modificado | Se quitaron de la barra superior los botones de contraseña y recuperación (ahora están en Seguridad) |
 | `ui/app.py` | modificado | Temporizador que revisa los respaldos cada hora |
 | `main.py` | modificado | Revisa los respaldos al arrancar |
 | `helpers/permisos.py` | modificado | El rol `admin` puede ver la sección `seguridad` |
@@ -94,26 +94,25 @@ Para qué sirve cada elemento:
 
 Como el sistema es local y no envía correos, la forma de recuperar una contraseña es un **código de recuperación**: algo parecido a los "códigos de respaldo" de Google o Microsoft.
 
+> **Solo el administrador tiene código de recuperación.** Las cuentas de ventas no reciben código ni pueden usar "¿Olvidaste tu contraseña?": si olvidan su contraseña, el administrador se la cambia desde **Seguridad → "Cambiar contraseña"**. Esto se controla con `ROLES_CON_RECUPERACION = ("admin",)` en `controllers/controlador_login.py`.
+
 ### En la interfaz
 
-**Primer inicio de sesión.** Cuando un usuario entra y todavía no tiene código, antes de abrir la ventana principal aparece la ventana **"Tu código de recuperación"** con:
+**Primer inicio de sesión.** Cuando el administrador entra y todavía no tiene código, antes de abrir la ventana principal aparece la ventana **"Tu código de recuperación"** con:
 
 - El código en letras grandes, por ejemplo `K7QM-3XRA-9TPW`.
 - Un botón **"Copiar código"**.
 - Un aviso: el código **no se volverá a mostrar** y sirve **una sola vez**.
 - El botón **"Ya lo guardé"** para continuar.
 
-**Generar un código nuevo.** Con la sesión iniciada:
-
-- **Administrador**: en la sección **Seguridad**, tarjeta **"Contraseñas y recuperación"**, botón **"Nuevo código"**.
-- **Ventas**: como no tiene la sección Seguridad, usa el botón **"Recuperación"** (ícono de llave) de la barra superior.
+**Generar un código nuevo.** Con la sesión iniciada, en la sección **Seguridad**, tarjeta **"Contraseñas y recuperación"**, botón **"Nuevo código"**.
 
 Al pulsarlo:
 
 1. Se pide la **contraseña actual**, por si alguien encontró la sesión abierta.
 2. Se muestra el código nuevo. **El anterior deja de funcionar.**
 
-Los dos botones abren la misma ventana: `MainWindow.nuevo_codigo_recuperacion()` en `ui/main_window.py`.
+El botón abre la ventana con `MainWindow.nuevo_codigo_recuperacion()` en `ui/main_window.py`, que también comprueba que la sesión sea de administrador.
 
 ### En el código
 
@@ -143,8 +142,8 @@ def generar_codigo_recuperacion():
 
 | Función | Cuándo se usa | Qué hace |
 |---|---|---|
-| `asegurar_codigo_recuperacion()` | Justo después de un inicio de sesión correcto (`ui/login_window.py`) | Si el usuario no tiene código, lo crea, lo registra en el historial y lo devuelve para mostrarlo. Si ya tiene, devuelve `None` y no se muestra nada. |
-| `regenerar_codigo_recuperacion(password)` | "Nuevo código" en Seguridad o "Recuperación" en la barra superior (`ui/main_window.py`) | Verifica la contraseña, crea un código nuevo (reemplaza el anterior) y lo registra en el historial. |
+| `asegurar_codigo_recuperacion()` | Justo después de un inicio de sesión correcto (`ui/login_window.py`) | Si el usuario es administrador y no tiene código, lo crea, lo registra en el historial y lo devuelve para mostrarlo. Si ya tiene, devuelve `None` y no se muestra nada. |
+| `regenerar_codigo_recuperacion(password)` | "Nuevo código" en Seguridad (`ui/main_window.py`) | Rechaza a las cuentas de ventas, verifica la contraseña, crea un código nuevo (reemplaza el anterior) y lo registra en el historial. |
 
 **Ventanas** (`ui/dialogs/recuperacion_dialog.py`):
 
@@ -171,7 +170,7 @@ Al pulsar **"Guardar contraseña"**:
 - **Si algo está mal**, el error aparece en rojo dentro de la misma ventana y se marca el campo con problema (por ejemplo, "La confirmación no coincide…").
 - **Si todo está bien**, la contraseña se guarda y aparece de inmediato **un código de recuperación nuevo**, porque el usado ya no sirve. Al cerrarlo, se vuelve al inicio de sesión con el usuario ya escrito, listo para entrar con la nueva contraseña.
 
-Si un usuario de **ventas** no tiene su código, el administrador puede cambiarle la contraseña desde **Seguridad → "Cambiar contraseña"**.
+Si una cuenta de **ventas** intenta recuperar su contraseña, el sistema lo rechaza con el mismo mensaje que un código incorrecto (*"Usuario o código de recuperación incorrectos. Si tu cuenta es de ventas, pide al administrador que cambie tu contraseña."*). El administrador se la cambia desde **Seguridad → "Cambiar contraseña"**.
 
 ### En el código
 
