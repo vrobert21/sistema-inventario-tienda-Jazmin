@@ -84,6 +84,38 @@ powershell -ExecutionPolicy Bypass -File .\crear_acceso_directo.ps1
 
 Se crea el acceso **Tienda Jazmín** en el escritorio, que abre el programa sin ventana de consola. Si mueves la carpeta del proyecto, vuelve a ejecutar el script.
 
+## Crear el ejecutable (.exe)
+
+El archivo `main.spec` ya está configurado para [PyInstaller](https://pyinstaller.org/). Genera un único `TiendaJazmin.exe`, sin ventana de consola y con su icono, e incluye `schema.sql`, `theme.qss` y el icono.
+
+Desde la carpeta del proyecto:
+
+```powershell
+# 1. Activa el entorno virtual
+.venv\Scripts\Activate.ps1
+
+# 2. Instala PyInstaller y las dependencias
+pip install pyinstaller
+pip install -r requirements.txt
+
+# 3. Compila usando el .spec
+python -m PyInstaller main.spec --noconfirm
+```
+
+Al terminar:
+
+- `dist\TiendaJazmin.exe` es el ejecutable que se usa y se distribuye.
+- `build\` contiene archivos temporales y se puede borrar.
+
+Ten en cuenta:
+
+- **Base de datos:** el `.exe` busca `tienda_jazmin.db` en su misma carpeta. Si no la encuentra, crea una vacía a partir de `schema.sql`. Para llevarte los datos actuales, copia `database\tienda_jazmin.db` a `dist\`, al lado del `.exe`.
+- **Respaldos:** se guardan en `respaldos\`, junto al `.exe`.
+- **Cambios en el código:** vuelve a ejecutar el paso 3 para regenerar el `.exe`.
+- **Antivirus:** a veces Windows Defender marca como sospechoso un ejecutable de un solo archivo (`--onefile`). Si pasa, compila en modo carpeta (`--onedir`), que además abre más rápido.
+- **El `.exe` no abre y no muestra ningún error:** cambia `console=False` a `console=True` en `main.spec`, vuelve a compilar y ejecútalo para ver el mensaje de error en la consola.
+- Agrega `build/` y `dist/` al `.gitignore` para no subir esos archivos al repositorio.
+
 ## Atajos de teclado
 
 | Atajo | Acción |
@@ -97,6 +129,7 @@ Se crea el acceso **Tienda Jazmín** en el escritorio, que abre el programa sin 
 
 ```
 ├── main.py                 Punto de entrada
+├── main.spec               Configuración de PyInstaller para generar el .exe
 ├── requirements.txt
 ├── crear_acceso_directo.ps1
 ├── tienda_jazmin.ico
