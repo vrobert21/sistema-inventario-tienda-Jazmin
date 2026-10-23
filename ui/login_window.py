@@ -76,6 +76,12 @@ class LoginWindow(QDialog):
         self.error.hide()
         caja.addWidget(self.error)
 
+        # Ayuda para cuentas de ventas: no tienen codigo de recuperacion.
+        self.ayuda_olvido = label("Si olvidó su contraseña, contacte al administrador.",
+                                  "caption", wrap=True)
+        self.ayuda_olvido.hide()
+        caja.addWidget(self.ayuda_olvido)
+
         self.boton_entrar = button("Iniciar sesión", variant="primary", large=True,
                                    on_click=self._iniciar_sesion)
         # Enter se maneja con returnPressed; sin boton por defecto para no
@@ -87,6 +93,8 @@ class LoginWindow(QDialog):
         self.boton_olvido = button("¿Olvidaste tu contraseña?", "key", variant="ghost",
                                    on_click=self._recuperar_password)
         self.boton_olvido.setAutoDefault(False)
+        # Solo se muestra para el administrador (ver _evaluar_usuario).
+        self.boton_olvido.hide()
         caja.addWidget(self.boton_olvido, 0, Qt.AlignHCenter)
 
         fondo.addWidget(tarjeta, 0, Qt.AlignHCenter)
@@ -94,7 +102,17 @@ class LoginWindow(QDialog):
 
         self.entrada_usuario.returnPressed.connect(self.entrada_password.setFocus)
         self.entrada_password.returnPressed.connect(self._iniciar_sesion)
+        self.entrada_usuario.editingFinished.connect(self._evaluar_usuario)
+        self.entrada_usuario.textChanged.connect(self._ocultar_ayuda_olvido)
         self.entrada_usuario.setFocus()
+
+    def _ocultar_ayuda_olvido(self):
+        self.boton_olvido.hide()
+        self.ayuda_olvido.hide()
+
+    def _evaluar_usuario(self):
+        # Al terminar de escribir el usuario: el enlace solo para el admin.
+        self.boton_olvido.setVisible(controlador_login.es_admin(self.entrada_usuario.text()))
 
     def _alternar_password(self):
         visible = self.entrada_password.echoMode() == QLineEdit.Normal
@@ -122,6 +140,10 @@ class LoginWindow(QDialog):
 
         self.error.setText(mensaje)
         self.error.show()
+        # Si el usuario no existe solo queda el error generico.
+        nombre = self.entrada_usuario.text()
+        self.boton_olvido.setVisible(controlador_login.es_admin(nombre))
+        self.ayuda_olvido.setVisible(controlador_login.es_vendedor(nombre))
         self.entrada_password.clear()
         if not self.entrada_usuario.text().strip():
             self.campo_usuario.set_invalid(True)
@@ -131,6 +153,11 @@ class LoginWindow(QDialog):
             self.entrada_password.setFocus()
 
     def _recuperar_password(self):
+        # El enlace oculto es solo presentacion; recuperar_password()
+        # vuelve a validar en el controlador que la cuenta sea admin.
+        if not controlador_login.es_admin(self.entrada_usuario.text()):
+            self._ocultar_ayuda_olvido()
+            return
         self.error.hide()
         dialogo = RecuperarPasswordDialog(self, self.entrada_usuario.text())
         if not dialogo.exec():

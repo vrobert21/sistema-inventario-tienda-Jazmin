@@ -111,6 +111,25 @@ def _puede_recuperar(rol):
     return rol in ROLES_CON_RECUPERACION
 
 
+def _rol_de(nombre_usuario):
+    """Rol del usuario activo con ese login, o None si no existe o esta inactivo."""
+    nombre_usuario = (nombre_usuario or "").strip()
+    if not nombre_usuario:
+        return None
+    fila = usuario.obtener_usuario_por_login(nombre_usuario)
+    return fila["rol"] if fila else None
+
+
+def es_admin(nombre_usuario):
+    """True si el usuario existe, esta activo y es administrador."""
+    return _rol_de(nombre_usuario) == "admin"
+
+
+def es_vendedor(nombre_usuario):
+    """True si el usuario existe, esta activo y es de ventas."""
+    return _rol_de(nombre_usuario) == "vendedor"
+
+
 def _nuevo_codigo(id_usuario):
     codigo = generar_codigo_recuperacion()
     usuario.guardar_codigo_recuperacion(id_usuario, normalizar_codigo(codigo))
@@ -182,11 +201,13 @@ def recuperar_password(nombre_usuario, codigo, password_nueva, confirmacion):
                                 "Recuperación durante el bloqueo")
         return False, _mensaje_bloqueo(segundos), None, None
 
-    # Las cuentas de ventas se tratan igual que un codigo incorrecto (mismo
-    # mensaje), para no revelar que tipo de cuenta es cada usuario.
+    # Solo el administrador puede recuperar. Aunque el login oculte el
+    # enlace a los demas, aqui se vuelve a validar: cualquier otra cuenta
+    # se trata igual que un codigo incorrecto (mismo mensaje), para no
+    # revelar que tipo de cuenta es cada usuario.
     fila = usuario.obtener_usuario_por_login(nombre_usuario)
     hash_codigo = None
-    if fila is not None and _puede_recuperar(fila["rol"]):
+    if fila is not None and es_admin(nombre_usuario):
         hash_codigo = usuario.obtener_hash_codigo_recuperacion(fila["id_usuario"])
 
     if not hash_codigo or not verificar_password(normalizar_codigo(codigo), hash_codigo):
