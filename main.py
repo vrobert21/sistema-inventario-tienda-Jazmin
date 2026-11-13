@@ -23,7 +23,7 @@ def main():
         ruta = respaldo_automatico_si_toca()
         if ruta:
             print(f"Respaldo automatico creado: {ruta}")
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001
         print(f"No se pudo crear el respaldo automatico: {error}")
 
     from ui.app import run
