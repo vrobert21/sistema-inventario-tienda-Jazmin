@@ -69,6 +69,11 @@ CREATE TABLE IF NOT EXISTS clientes (
     fecha_registro  TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS ux_clientes_dui
+ON clientes(dui) WHERE dui IS NOT NULL AND dui <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_clientes_nombre_telefono
+ON clientes(lower(trim(nombre)), coalesce(trim(telefono), ''));
 -- ------------------------------------------------------------
 -- PROVEEDORES
 -- ------------------------------------------------------------
