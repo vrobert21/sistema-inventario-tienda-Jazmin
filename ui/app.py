@@ -9,9 +9,11 @@ import os
 import sys
 import traceback
 
-from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QGuiApplication, QIcon
-from PySide6.QtWidgets import QApplication, QDialog
+from PySide6.QtCore import QEvent, QObject, QPointF, QTimer, Qt
+from PySide6.QtGui import QGuiApplication, QIcon, QWheelEvent
+from PySide6.QtWidgets import (
+    QAbstractScrollArea, QAbstractSpinBox, QApplication, QComboBox, QDialog,
+)
 
 from ui.icons import logo_pixmap
 from ui.styles import aplicar_tema
@@ -32,6 +34,34 @@ def _instalar_manejador_errores(app):
             anterior(tipo, valor, tb)
 
     sys.excepthook = manejador
+
+
+class _RuedaSoloConFoco(QObject):
+    """
+    Evita que la rueda del mouse o el touchpad cambie listas desplegables y
+    campos numericos mientras se hace scroll: el giro siempre se pasa al area
+    desplazable (la pagina) y el scroll no se "atora" en el control. Para
+    cambiar un valor se usa el clic, el teclado o las flechas del campo.
+    """
+
+    def eventFilter(self, objeto, evento):
+        if (evento.type() == QEvent.Wheel
+                and isinstance(objeto, (QComboBox, QAbstractSpinBox))):
+            # Un reenvio al padre no sube por la jerarquia, asi que se busca
+            # el area desplazable que contiene al control y se le entrega directo.
+            area = objeto.parentWidget()
+            while area is not None and not isinstance(area, QAbstractScrollArea):
+                area = area.parentWidget()
+            if area is not None:
+                vista = area.viewport()
+                pos = vista.mapFromGlobal(evento.globalPosition().toPoint())
+                nuevo = QWheelEvent(
+                    QPointF(pos), evento.globalPosition(), evento.pixelDelta(),
+                    evento.angleDelta(), evento.buttons(), evento.modifiers(),
+                    evento.phase(), evento.inverted())
+                QApplication.sendEvent(vista, nuevo)
+            return True
+        return False
 
 
 _RUTA_ICONO = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tienda_jazmin.ico")
@@ -80,6 +110,8 @@ def run():
     app.setQuitOnLastWindowClosed(False)
     app.styleHints().setColorScheme(Qt.ColorScheme.Light) #linea de cambio de tema.
     aplicar_tema(app)
+    filtro_rueda = _RuedaSoloConFoco(app)
+    app.installEventFilter(filtro_rueda)
     if os.path.exists(_RUTA_ICONO):
         app.setWindowIcon(QIcon(_RUTA_ICONO))
     else:
