@@ -1,6 +1,7 @@
 """
-Pantalla de Seguridad (solo administrador).
+Pantalla de Seguridad.
 
+El administrador ve todo:
 - Contrasenas y recuperacion: cambiar la contrasena (propia o de ventas)
   y generar un nuevo codigo de recuperacion. Los dialogos los abre la
   ventana principal (cambiar_password / nuevo_codigo_recuperacion).
@@ -9,16 +10,22 @@ Pantalla de Seguridad (solo administrador).
 - Historial de accesos: inicios y cierres de sesion, intentos fallidos,
   bloqueos temporales y recuperaciones de contrasena.
 
+La cuenta de ventas solo ve la tarjeta de "Cambiar contraseña" (la
+ley exige que cada rol pueda cambiar su propia contrasena, y esa
+cuenta no tiene codigo de recuperacion, respaldos ni el historial).
+
 Usa: controlador_seguridad.
 """
 
 import os
+from datetime import date
 
-from PySide6.QtCore import QUrl, Qt
+from PySide6.QtCore import QStandardPaths, QUrl, Qt
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QVBoxLayout
+from PySide6.QtWidgets import QFileDialog, QGridLayout, QHBoxLayout, QVBoxLayout
 
 from controllers import controlador_seguridad
+from helpers import permisos
 from ui.formato_ui import fecha_corta, plural
 from ui.widgets import messages
 from ui.widgets.common import Card, button, label
@@ -36,6 +43,7 @@ _EVENTOS = {
     "recuperacion_fallida": ("Recuperación fallida", "warning"),
     "codigo_generado": ("Código generado", "info"),
     "cambio_password": ("Contraseña cambiada", "info"),
+    "venta_anulada": ("Venta anulada", "danger"),
 }
 
 _FILTROS = [
@@ -45,6 +53,7 @@ _FILTROS = [
     ("Bloqueos", {"bloqueo", "intento_bloqueado"}),
     ("Contraseñas y recuperación", {"cambio_password", "recuperacion", "recuperacion_fallida",
                                     "codigo_generado"}),
+    ("Ventas y cambios", {"venta_anulada"}),
 ]
 
 _NOMBRE_ROL = {"admin": "Administrador", "vendedor": "Ventas"}
@@ -60,23 +69,30 @@ def _fecha(dt):
 
 class SeguridadPage(Page):
     def __init__(self, navigate):
-        super().__init__("Seguridad", "Contraseñas, respaldos de la base de datos e historial de "
-                                      "accesos al sistema.")
+        self._admin = permisos.es_admin()
+        descripcion = ("Contraseñas, respaldos de la base de datos e historial de accesos al sistema."
+                       if self._admin else "Cambia tu contraseña de acceso al sistema.")
+        super().__init__("Seguridad", descripcion)
         self.navigate = navigate
 
         # --- Contrasenas y recuperacion ---
-        cuentas = Card("Contraseñas y recuperación")
+        cuentas = Card("Contraseñas y recuperación" if self._admin else "Contraseña")
         fila_cuentas = QHBoxLayout()
         fila_cuentas.setSpacing(16)
-        for titulo, texto, boton in (
+        bloques = [
             ("Cambiar contraseña",
-             "Cambia tu contraseña o la de una cuenta de ventas. Se pide tu contraseña actual.",
+             "Cambia tu contraseña o la de una cuenta de ventas. Se pide tu contraseña actual."
+             if self._admin else "Cambia tu contraseña. Se pide tu contraseña actual.",
              button("Cambiar contraseña", "lock", "secondary", on_click=self._cambiar_password)),
-            ("Código de recuperación",
-             "Genera un código nuevo para recuperar tu contraseña si la olvidas. "
-             "El código anterior dejará de funcionar.",
-             button("Nuevo código", "key", "secondary", on_click=self._nuevo_codigo)),
-        ):
+        ]
+        if self._admin:
+            bloques.append((
+                "Código de recuperación",
+                "Genera un código nuevo para recuperar tu contraseña si la olvidas. "
+                "El código anterior dejará de funcionar.",
+                button("Nuevo código", "key", "secondary", on_click=self._nuevo_codigo),
+            ))
+        for titulo, texto, boton in bloques:
             bloque = QVBoxLayout()
             bloque.setSpacing(6)
             bloque.addWidget(label(titulo, "fieldLabel"))
@@ -84,9 +100,15 @@ class SeguridadPage(Page):
             bloque.addSpacing(4)
             bloque.addWidget(boton, 0, Qt.AlignLeft)
             bloque.addStretch(1)
-            fila_cuentas.addLayout(bloque, 1)
+            fila_cuentas.addLayout(bloque, 1 if self._admin else 0)
+        if not self._admin:
+            fila_cuentas.addStretch(1)
         cuentas.body.addLayout(fila_cuentas)
         self.content.addWidget(cuentas)
+
+        if not self._admin:
+            self.content.addStretch(1)
+            return
 
         # --- Respaldos ---
         respaldos = Card("Respaldos de la base de datos",
@@ -131,6 +153,8 @@ class SeguridadPage(Page):
         self.buscador = SearchField("Buscar usuario o detalle")
         self.buscador.textChanged.connect(lambda t: self.tabla.set_filter_text(t))
         historial.add_header_widget(self.buscador)
+        historial.add_header_widget(
+            button("Exportar PDF", "file", "secondary", on_click=self._exportar_historial))
 
         self.tabla = DataTable(
             [
@@ -152,6 +176,9 @@ class SeguridadPage(Page):
         self.content.addWidget(historial, 1)
 
     def refresh(self):
+        if not self._admin:
+            return
+
         estado = controlador_seguridad.obtener_estado_respaldos()
         self._carpeta = estado["carpeta"]
         self.valor_ultimo.setText(_fecha(estado["ultimo"]) if estado["ultimo"] else "Aún no hay respaldos")
@@ -198,3 +225,21 @@ class SeguridadPage(Page):
             self._carpeta = controlador_seguridad.obtener_estado_respaldos()["carpeta"]
         os.makedirs(self._carpeta, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(self._carpeta))
+
+    def _exportar_historial(self):
+        carpeta = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation) or os.path.expanduser("~")
+        nombre = f"Historial_accesos_{date.today().isoformat()}.pdf"
+        ruta, _ = QFileDialog.getSaveFileName(self, "Guardar historial", os.path.join(carpeta, nombre),
+                                              "Documento PDF (*.pdf)")
+        if not ruta:
+            return
+        if not ruta.lower().endswith(".pdf"):
+            ruta += ".pdf"
+
+        exito, mensaje = controlador_seguridad.exportar_historial_accesos(ruta)
+        if not exito:
+            messages.error(self, "No se pudo guardar el historial", mensaje)
+            return
+        if messages.confirm(self, "Historial guardado", f"El archivo se guardó en:\n{ruta}\n\n¿Quieres abrirlo ahora?",
+                            confirmar="Abrir PDF", cancelar="Cerrar"):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(ruta))

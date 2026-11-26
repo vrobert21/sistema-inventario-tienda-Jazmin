@@ -65,3 +65,18 @@ ETIQUETA_PAGO = {"efectivo": "Efectivo", "tarjeta": "Tarjeta", "otro": "Otro", "
 ORDEN_PAGO = ["efectivo", "tarjeta", "otro", "credito"]
 
 ETIQUETA_OPERACION = {"venta": "Venta", "entrada": "Entrada", "salida": "Salida", "ajuste": "Ajuste"}
+
+# Mismas etiquetas que ui/pages/seguridad.py (ahi ademas llevan un color de
+# badge; aqui solo se necesita el texto para el PDF del historial).
+ETIQUETA_EVENTO = {
+    "inicio": "Inicio de sesión",
+    "cierre": "Cierre de sesión",
+    "fallido": "Intento fallido",
+    "bloqueo": "Usuario bloqueado",
+    "intento_bloqueado": "Intento bloqueado",
+    "recuperacion": "Contraseña recuperada",
+    "recuperacion_fallida": "Recuperación fallida",
+    "codigo_generado": "Código generado",
+    "cambio_password": "Contraseña cambiada",
+    "venta_anulada": "Venta anulada",
+}

@@ -1,8 +1,9 @@
 """
 Barra superior: marca, fecha, usuario y cerrar sesion.
 
-Cambiar contrasenas y el codigo de recuperacion estan en la seccion
-Seguridad (solo administrador).
+Cambiar la contrasena esta en la seccion Seguridad, que ahora tambien
+ve la cuenta de ventas (con una version reducida: solo su propia
+contrasena, sin respaldos ni historial).
 """
 
 from datetime import date

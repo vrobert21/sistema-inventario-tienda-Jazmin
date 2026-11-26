@@ -3,10 +3,13 @@ Permisos por rol.
 
 El sistema separa el trabajo en dos cuentas:
 
-- admin    -> todas las secciones del programa. Tambien puede cambiar las
-              contrasenas y ver la seccion de seguridad (historial de
-              accesos y respaldos).
-- vendedor -> parte de ventas: ventas, creditos y clientes, y los reportes.
+- admin    -> todas las secciones del programa. En Seguridad ademas ve
+              el codigo de recuperacion, los respaldos y el historial
+              de accesos.
+- vendedor -> parte de ventas: ventas, creditos y clientes, los reportes,
+              y una Seguridad reducida (solo puede cambiar su propia
+              contrasena; ui/pages/seguridad.py decide que mostrar segun
+              el rol).
 
 La ventana principal solo construye las secciones que el rol puede ver,
 y las pantallas usan puede_ver() para ocultar accesos a secciones ajenas.
@@ -17,7 +20,7 @@ from helpers import sesion
 SECCIONES_POR_ROL = {
     "admin": ("inicio", "reportes", "ventas", "creditos", "clientes",
               "inventario", "productos", "categorias", "seguridad"),
-    "vendedor": ("reportes", "ventas", "creditos", "clientes"),
+    "vendedor": ("reportes", "ventas", "creditos", "clientes", "seguridad"),
 }
 
 # Seccion que se abre al iniciar sesion.

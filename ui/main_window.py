@@ -154,7 +154,7 @@ class MainWindow(QMainWindow):
     # se completo la accion.
 
     def cambiar_password(self):
-        if not permisos.es_admin():
+        if not sesion.hay_sesion_activa():
             return False
         dialogo = PasswordDialog(self)
         if dialogo.exec():

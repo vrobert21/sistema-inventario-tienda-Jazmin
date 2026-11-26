@@ -73,7 +73,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_clientes_dui
 ON clientes(dui) WHERE dui IS NOT NULL AND dui <> '';
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_clientes_nombre_telefono
-ON clientes(lower(trim(nombre)), coalesce(trim(telefono), ''));
+ON clientes(lower(trim(nombre_completo)), coalesce(trim(telefono), ''));
 -- ------------------------------------------------------------
 -- PROVEEDORES
 -- ------------------------------------------------------------

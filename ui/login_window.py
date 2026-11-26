@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog, QFrame, QLabel, QLineEdit, QVBoxLayout
 
 from controllers import controlador_login
+from helpers.contacto import mensaje_contacto
 from ui import theme
 from ui.dialogs.recuperacion_dialog import CodigoRecuperacionDialog, RecuperarPasswordDialog
 from ui.icons import icon, logo_pixmap
@@ -76,9 +77,10 @@ class LoginWindow(QDialog):
         self.error.hide()
         caja.addWidget(self.error)
 
-        # Ayuda para cuentas de ventas: no tienen codigo de recuperacion.
-        self.ayuda_olvido = label("Si olvidó su contraseña, contacte al administrador.",
-                                  "caption", wrap=True)
+        # Datos de contacto del administrador: se muestran en cualquier
+        # intento fallido (contrasena incorrecta, bloqueo, etc.), no solo
+        # para cuentas de ventas (que ademas no tienen codigo de recuperacion).
+        self.ayuda_olvido = label(mensaje_contacto(), "caption", wrap=True)
         self.ayuda_olvido.hide()
         caja.addWidget(self.ayuda_olvido)
 
@@ -143,7 +145,7 @@ class LoginWindow(QDialog):
         # Si el usuario no existe solo queda el error generico.
         nombre = self.entrada_usuario.text()
         self.boton_olvido.setVisible(controlador_login.es_admin(nombre))
-        self.ayuda_olvido.setVisible(controlador_login.es_vendedor(nombre))
+        self.ayuda_olvido.setVisible(bool(mensaje_contacto()))
         self.entrada_password.clear()
         if not self.entrada_usuario.text().strip():
             self.campo_usuario.set_invalid(True)

@@ -255,3 +255,95 @@ def listar_ventas_recientes(limite=20):
     filas = cursor.fetchall()
     conexion.close()
     return filas
+
+
+def anular_venta(id_venta, id_usuario):
+    """
+    Anula una venta ya registrada: regresa al inventario lo vendido en
+    cada linea (con su rastro en movimientos_inventario) y, si era una
+    venta al credito, revierte el cargo hecho a la cuenta del cliente.
+    La venta no se borra: queda con estado = 0 ("anulada") para
+    conservar el historial completo.
+
+    Todo el proceso va en una sola transaccion, igual que
+    registrar_venta: o se deshace completo, o no se toca nada.
+
+    Devuelve un diccionario con numero_venta y total (en centavos).
+    Lanza ValueError si la venta no existe o ya estaba anulada.
+    """
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+
+    try:
+        cursor.execute(
+            "SELECT numero_venta, estado, tipo_pago, id_cliente, total "
+            "FROM ventas WHERE id_venta = ?;",
+            (id_venta,)
+        )
+        cabecera = cursor.fetchone()
+        if cabecera is None:
+            raise ValueError("Esa venta ya no existe.")
+        if cabecera["estado"] == 0:
+            raise ValueError(f"La venta {cabecera['numero_venta']} ya estaba anulada.")
+
+        numero_venta = cabecera["numero_venta"]
+
+        cursor.execute(
+            "SELECT id_producto, cantidad FROM detalle_ventas WHERE id_venta = ?;",
+            (id_venta,)
+        )
+        detalles = cursor.fetchall()
+
+        for d in detalles:
+            cursor.execute(
+                "SELECT existencia FROM productos WHERE id_producto = ?;",
+                (d["id_producto"],)
+            )
+            fila_producto = cursor.fetchone()
+            # Si el producto ya no existe, no hay inventario que regresar.
+            if fila_producto is None:
+                continue
+
+            existencia_anterior = fila_producto["existencia"]
+            existencia_nueva = existencia_anterior + d["cantidad"]
+            cursor.execute(
+                "UPDATE productos SET existencia = ? WHERE id_producto = ?;",
+                (existencia_nueva, d["id_producto"])
+            )
+            cursor.execute(
+                """
+                INSERT INTO movimientos_inventario
+                    (id_producto, tipo, cantidad, existencia_anterior,
+                     existencia_nueva, id_venta, descripcion)
+                VALUES (?, 'entrada', ?, ?, ?, ?, ?);
+                """,
+                (d["id_producto"], d["cantidad"], existencia_anterior,
+                 existencia_nueva, id_venta, f"Anulación de venta {numero_venta}")
+            )
+
+        if cabecera["tipo_pago"] == "credito" and cabecera["id_cliente"] is not None:
+            saldo_anterior = movimiento_cuenta_cliente.calcular_saldo_con_cursor(
+                cursor, cabecera["id_cliente"])
+            saldo_nuevo = saldo_anterior - cabecera["total"]
+            cursor.execute(
+                """
+                INSERT INTO movimientos_cuenta_cliente
+                    (id_cliente, tipo, id_venta, monto, saldo_anterior, saldo_nuevo, descripcion)
+                VALUES (?, 'abono', ?, ?, ?, ?, ?);
+                """,
+                (cabecera["id_cliente"], id_venta, cabecera["total"],
+                 saldo_anterior, saldo_nuevo, f"Anulación de venta {numero_venta}")
+            )
+
+        cursor.execute("UPDATE ventas SET estado = 0 WHERE id_venta = ?;", (id_venta,))
+
+        conexion.commit()
+
+    except Exception:
+        conexion.rollback()
+        raise
+
+    finally:
+        conexion.close()
+
+    return {"numero_venta": numero_venta, "total": cabecera["total"]}

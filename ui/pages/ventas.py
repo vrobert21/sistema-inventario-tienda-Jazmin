@@ -19,6 +19,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout
 
 from controllers import controlador_clientes, controlador_ventas
+from helpers import permisos
 from helpers.formato import centavos_a_texto
 from ui.formato_ui import METODOS_PAGO, etiqueta_pago, fecha_corta, plural
 from ui.widgets import messages
@@ -125,7 +126,10 @@ class VentasPage(Page):
         return tarjeta
 
     def _crear_recientes(self):
-        tarjeta = Card("Ventas recientes", "Las últimas 20 ventas registradas.")
+        es_admin = permisos.es_admin()
+        descripcion = ("Las últimas 20 ventas registradas. Doble clic en una venta para anularla."
+                       if es_admin else "Las últimas 20 ventas registradas.")
+        tarjeta = Card("Ventas recientes", descripcion)
         self.buscador = SearchField("Buscar venta o cliente")
         self.buscador.textChanged.connect(lambda t: self.tabla_recientes.set_filter_text(t))
         tarjeta.add_header_widget(self.buscador)
@@ -140,11 +144,16 @@ class VentasPage(Page):
                                         "info" if f["tipo_pago"] == "credito" else "neutral")),
                 Column("nombre_usuario", "Atendió", width=150),
                 Column("total", "Total", fmt=centavos_a_texto, align="right", width=120),
+                Column("estado", "Estado", align="center", width=110,
+                       badge=lambda f: (("Activa", "success") if f["estado"]
+                                        else ("Anulada", "danger"))),
             ],
             empty_text="Todavía no hay ventas registradas.",
             empty_filtered_text="No hay ventas que coincidan con la búsqueda.",
             min_height=260,
         )
+        if es_admin:
+            self.tabla_recientes.row_activated.connect(self._anular_venta)
         tarjeta.body.addWidget(self.tabla_recientes, 1)
         return tarjeta
 
@@ -319,3 +328,29 @@ class VentasPage(Page):
             # Los datos pueden haber cambiado (existencia, precio); se recargan
             # sin perder el carrito.
             self.refresh()
+
+    # ------------------------------------------------------------------
+    # Anular (solo administrador)
+    # ------------------------------------------------------------------
+
+    def _anular_venta(self, fila):
+        if not fila["estado"]:
+            messages.warning(self, "Venta ya anulada",
+                             f"La venta {fila['numero_venta']} ya estaba anulada.")
+            return
+        if not messages.confirm(
+            self, "¿Anular esta venta?",
+            f"Se anulará la venta {fila['numero_venta']} por "
+            f"{centavos_a_texto(fila['total'])}. El inventario vendido se regresará "
+            "y, si era al crédito, se revertirá el cargo al cliente. Esta acción queda "
+            "registrada en el historial de accesos.",
+            confirmar="Anular venta", danger=True,
+        ):
+            return
+
+        exito, mensaje = controlador_ventas.anular_venta(fila["id_venta"])
+        if exito:
+            messages.success(self, mensaje)
+            self.refresh()
+        else:
+            messages.error(self, "No se pudo anular la venta", mensaje)
